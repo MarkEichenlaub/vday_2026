@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connections</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            background: #fff;
+            padding-top: 40px;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 624px;
+            padding: 0 16px;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 1.05rem;
+            color: #333;
+            margin-bottom: 24px;
+        }
+
+        /* Solved category bars */
+        #solved-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        #solved-container:not(:empty) {
+            margin-bottom: 8px;
+        }
+
+        .solved-row {
+            border-radius: 10px;
+            padding: 20px 16px;
+            text-align: center;
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% { opacity: 0; transform: scaleY(0.5); }
+            100% { opacity: 1; transform: scaleY(1); }
+        }
+
+        .solved-row .cat-name {
+            font-weight: 800;
+            font-size: 1.05rem;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        .solved-row .cat-words {
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-top: 4px;
+        }
+
+        .solved-row.level-0 { background: #f9df6d; }
+        .solved-row.level-1 { background: #a0c35a; }
+        .solved-row.level-2 { background: #b0c4ef; }
+        .solved-row.level-3 { background: #ba81c5; }
+
+        /* Tile grid */
+        #grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .tile {
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #efefe6;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 0.12s, color 0.12s, transform 0.12s;
+            user-select: none;
+            letter-spacing: 0.02em;
+        }
+
+        .tile:hover {
+            background: #e5e5da;
+        }
+
+        .tile.selected {
+            background: #5a594e;
+            color: #fff;
+        }
+
+        .tile.selected:hover {
+            background: #4a493e;
+        }
+
+        .tile.shake {
+            animation: shake 0.5s ease;
+        }
+
+        .tile.bounce {
+            animation: bounce 0.4s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            15% { transform: translateX(-6px); }
+            30% { transform: translateX(6px); }
+            45% { transform: translateX(-6px); }
+            60% { transform: translateX(6px); }
+            75% { transform: translateX(-3px); }
+            90% { transform: translateX(3px); }
+        }
+
+        @keyframes bounce {
+            0% { transform: translateY(0); }
+            40% { transform: translateY(-12px); }
+            100% { transform: translateY(0); }
+        }
+
+        /* Mistakes */
+        .mistakes-row {
+            text-align: center;
+            margin: 20px 0 16px;
+            font-size: 1rem;
+            color: #333;
+        }
+
+        .dot {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #5a594e;
+            margin: 0 3px;
+            vertical-align: middle;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        .dot.lost {
+            opacity: 0;
+            transform: scale(0);
+        }
+
+        /* Buttons */
+        .button-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: 1.5px solid #333;
+            border-radius: 24px;
+            background: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.12s;
+        }
+
+        .btn:hover {
+            background: #f0f0f0;
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        .btn-submit {
+            background: #000;
+            color: #fff;
+            border-color: #000;
+        }
+
+        .btn-submit:hover {
+            background: #222;
+        }
+
+        .btn-submit:disabled {
+            background: #888;
+            border-color: #888;
+            color: #ccc;
+        }
+
+        /* Message area */
+        #message {
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 600;
+            min-height: 28px;
+            color: #333;
+        }
+
+        /* Win celebration */
+        .heart-rain {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+            overflow: hidden;
+        }
+
+        .falling-heart {
+            position: absolute;
+            top: -40px;
+            font-size: 24px;
+            animation: fall linear forwards;
+            opacity: 0.85;
+        }
+
+        @keyframes fall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 0.85; }
+            100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+        }
+
+        /* Game over reveal */
+        .game-over-msg {
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-top: 16px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <p class="subtitle">Create four groups of four!</p>
+    <div id="solved-container"></div>
+    <div id="grid-container"></div>
+    <div class="mistakes-row">
+        Mistakes remaining:
+        <span id="dots"></span>
+    </div>
+    <div class="button-row">
+        <button class="btn" id="shuffle-btn" onclick="handleShuffle()">Shuffle</button>
+        <button class="btn" id="deselect-btn" onclick="handleDeselectAll()">Deselect All</button>
+        <button class="btn btn-submit" id="submit-btn" onclick="handleSubmit()" disabled>Submit</button>
+    </div>
+    <div id="message"></div>
+</div>
+
+<script>
+const CATEGORIES = [
+    {
+        name: "___-struck",
+        words: ["LOVE", "STAR", "AWE", "STAGE"],
+        level: 0
+    },
+    {
+        name: "Red ___",
+        words: ["CARPET", "HERRING", "FLAG", "BULL"],
+        level: 1
+    },
+    {
+        name: "___ heart",
+        words: ["BRAVE", "SWEET", "PURPLE", "SACRED"],
+        level: 2
+    },
+    {
+        name: "Also a chocolate bar",
+        words: ["MARS", "DOVE", "BOUNTY", "MOUNDS"],
+        level: 3
+    }
+];
+
+// Game state
+let words = [];
+let selected = new Set();
+let mistakes = 0;
+const MAX_MISTAKES = 4;
+let solved = [];
+let locked = false;
+
+function init() {
+    words = CATEGORIES.flatMap(c => [...c.words]);
+    shuffleArray(words);
+    renderDots();
+    renderGrid();
+}
+
+function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+}
+
+function renderGrid() {
+    const container = document.getElementById('grid-container');
+    container.innerHTML = '';
+    words.forEach(word => {
+        const tile = document.createElement('div');
+        tile.className = 'tile' + (selected.has(word) ? ' selected' : '');
+        tile.textContent = word;
+        tile.dataset.word = word;
+        tile.addEventListener('click', () => toggleWord(word));
+        container.appendChild(tile);
+    });
+    document.getElementById('submit-btn').disabled = selected.size !== 4;
+}
+
+function renderDots() {
+    const dotsEl = document.getElementById('dots');
+    dotsEl.innerHTML = '';
+    for (let i = 0; i < MAX_MISTAKES; i++) {
+        const dot = document.createElement('span');
+        dot.className = 'dot' + (i < MAX_MISTAKES - mistakes ? '' : ' lost');
+        dotsEl.appendChild(dot);
+    }
+}
+
+function renderSolved() {
+    const container = document.getElementById('solved-container');
+    container.innerHTML = '';
+    const sorted = [...solved].sort((a, b) => a.level - b.level);
+    sorted.forEach(cat => {
+        const row = document.createElement('div');
+        row.className = `solved-row level-${cat.level}`;
+        row.innerHTML = `
+            <div class="cat-name">${cat.name}</div>
+            <div class="cat-words">${cat.words.join(', ')}</div>
+        `;
+        container.appendChild(row);
+    });
+}
+
+function toggleWord(word) {
+    if (locked) return;
+    if (selected.has(word)) {
+        selected.delete(word);
+    } else if (selected.size < 4) {
+        selected.add(word);
+    }
+    renderGrid();
+}
+
+function handleDeselectAll() {
+    if (locked) return;
+    selected.clear();
+    renderGrid();
+}
+
+function handleShuffle() {
+    if (locked) return;
+    shuffleArray(words);
+    renderGrid();
+}
+
+function showMessage(text, duration) {
+    const el = document.getElementById('message');
+    el.textContent = text;
+    if (duration) {
+        setTimeout(() => {
+            if (el.textContent === text) el.textContent = '';
+        }, duration);
+    }
+}
+
+function handleSubmit() {
+    if (selected.size !== 4 || locked) return;
+    locked = true;
+
+    const sel = [...selected];
+
+    // Find matching category
+    const match = CATEGORIES.find(cat =>
+        !solved.includes(cat) &&
+        sel.every(w => cat.words.includes(w)) &&
+        cat.words.every(w => sel.includes(w))
+    );
+
+    if (match) {
+        // Correct! Bounce selected tiles, then reveal
+        const tiles = document.querySelectorAll('.tile.selected');
+        tiles.forEach(t => t.classList.add('bounce'));
+
+        setTimeout(() => {
+            solved.push(match);
+            words = words.filter(w => !match.words.includes(w));
+            selected.clear();
+            renderSolved();
+            renderGrid();
+            locked = false;
+
+            if (solved.length === 4) {
+                winGame();
+            }
+        }, 450);
+    } else {
+        // Wrong guess — check for one-away
+        let oneAway = false;
+        for (const cat of CATEGORIES) {
+            if (solved.includes(cat)) continue;
+            const overlap = sel.filter(w => cat.words.includes(w)).length;
+            if (overlap === 3) {
+                oneAway = true;
+                break;
+            }
+        }
+
+        // Shake tiles
+        const tiles = document.querySelectorAll('.tile.selected');
+        tiles.forEach(t => t.classList.add('shake'));
+
+        if (oneAway) {
+            showMessage('One away\u2026', 2000);
+        }
+
+        mistakes++;
+        renderDots();
+
+        setTimeout(() => {
+            tiles.forEach(t => t.classList.remove('shake'));
+            if (mistakes >= MAX_MISTAKES) {
+                loseGame();
+            } else {
+                locked = false;
+            }
+        }, 600);
+    }
+}
+
+function winGame() {
+    showMessage('');
+    // Heart rain celebration
+    const rain = document.createElement('div');
+    rain.className = 'heart-rain';
+    document.body.appendChild(rain);
+
+    const hearts = ['\u2764\ufe0f', '\ud83d\udc95', '\ud83d\udc96', '\ud83d\udc97', '\ud83d\udc9d', '\u2763\ufe0f'];
+    for (let i = 0; i < 50; i++) {
+        setTimeout(() => {
+            const h = document.createElement('div');
+            h.className = 'falling-heart';
+            h.textContent = hearts[Math.floor(Math.random() * hearts.length)];
+            h.style.left = Math.random() * 100 + '%';
+            h.style.animationDuration = (2 + Math.random() * 3) + 's';
+            h.style.fontSize = (16 + Math.random() * 20) + 'px';
+            rain.appendChild(h);
+            setTimeout(() => h.remove(), 5000);
+        }, i * 80);
+    }
+
+    setTimeout(() => rain.remove(), 6000);
+}
+
+function loseGame() {
+    // Reveal all unsolved categories
+    const unsolved = CATEGORIES.filter(c => !solved.includes(c))
+        .sort((a, b) => a.level - b.level);
+
+    let delay = 0;
+    unsolved.forEach(cat => {
+        setTimeout(() => {
+            solved.push(cat);
+            words = words.filter(w => !cat.words.includes(w));
+            selected.clear();
+            renderSolved();
+            renderGrid();
+        }, delay);
+        delay += 500;
+    });
+
+    setTimeout(() => {
+        showMessage('Next time!');
+        locked = true;
+    }, delay);
+}
+
+init();
+</script>
+
+</body>
+</html>
